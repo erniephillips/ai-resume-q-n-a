@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AI Resume Q&A Chat</title>
+  <style>
+    /* Chat container fixed at bottom-right */
+    #chat-container {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      width: 300px;
+      height: 400px;
+      background: #f1f1f1;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+      display: flex;
+      flex-direction: column;
+      box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+      font-family: Arial, sans-serif;
+      z-index: 1000;
+    }
+    /* Chat header styling */
+    #chat-header {
+      background: #007BFF;
+      color: white;
+      padding: 10px;
+      text-align: center;
+      font-weight: bold;
+      cursor: pointer;
+      user-select: none;
+    }
+    /* Conversation area styling */
+    #chat-conversation {
+      flex: 1;
+      padding: 10px;
+      overflow-y: auto;
+      background: #ffffff;
+    }
+    /* Message bubble styling */
+    .chat-message {
+      margin: 5px 0;
+      padding: 8px;
+      border-radius: 8px;
+      max-width: 80%;
+      word-wrap: break-word;
+    }
+    .user-message {
+      background: #DCF8C6;
+      align-self: flex-end;
+    }
+    .ai-message {
+      background: #e2e2e2;
+      align-self: flex-start;
+    }
+    /* Input area styling */
+    #chat-input-container {
+      display: flex;
+      border-top: 1px solid #ccc;
+      padding: 5px;
+    }
+    #chat-input {
+      flex: 1;
+      padding: 8px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+    }
+    #chat-send {
+      margin-left: 5px;
+      padding: 8px 12px;
+      border: none;
+      border-radius: 4px;
+      background: #007BFF;
+      color: white;
+      cursor: pointer;
+    }
+  </style>
+  <script>
+    // Send a user message and fetch AI's response
+    async function sendMessage() {
+      const inputEl = document.getElementById("chat-input");
+      const message = inputEl.value;
+      if (!message) {
+        return;
+      }
+      // Append user's message
+      addMessage(message, "user");
+      inputEl.value = "";
+
+      // Auto-scroll conversation area to the bottom
+      const conversation = document.getElementById("chat-conversation");
+      conversation.scrollTop = conversation.scrollHeight;
+
+      // Append temporary loading indicator
+      addMessage("...", "ai", true);
+
+      try {
+        const response = await fetch("http://127.0.0.1:5000/ask", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ question: message })
+        });
+        const data = await response.json();
+        // Remove the temporary loading message
+        removeLastMessage();
+        // Append AI's response
+        addMessage(data.answer || "Error getting response.", "ai");
+      } catch (error) {
+        removeLastMessage();
+        addMessage("Error connecting to the backend.", "ai");
+      }
+      conversation.scrollTop = conversation.scrollHeight;
+    }
+
+    // Add a message bubble to the conversation
+    function addMessage(text, sender, isTemporary = false) {
+      const conversation = document.getElementById("chat-conversation");
+      const msgDiv = document.createElement("div");
+      msgDiv.classList.add("chat-message");
+      if (sender === "user") {
+        msgDiv.classList.add("user-message");
+      } else {
+        msgDiv.classList.add("ai-message");
+      }
+      msgDiv.textContent = text;
+      if (isTemporary) {
+        msgDiv.setAttribute("data-temp", "true");
+      }
+      conversation.appendChild(msgDiv);
+    }
+
+    // Remove the last temporary message (used for loading indicator)
+    function removeLastMessage() {
+      const conversation = document.getElementById("chat-conversation");
+      const messages = conversation.getElementsByClassName("chat-message");
+      if (messages.length > 0) {
+        const lastMessage = messages[messages.length - 1];
+        if (lastMessage.getAttribute("data-temp") === "true") {
+          conversation.removeChild(lastMessage);
+        }
+      }
+    }
+
+    // Toggle chat window visibility on header click
+    function toggleChat() {
+      const chatContainer = document.getElementById("chat-container");
+      if (chatContainer.style.display === "none" || chatContainer.style.display === "") {
+        chatContainer.style.display = "flex";
+      } else {
+        chatContainer.style.display = "none";
+      }
+    }
+  </script>
+</head>
+<body>
+  <div id="chat-container">
+    <div id="chat-header" onclick="toggleChat()">Chat with AI</div>
+    <div id="chat-conversation"></div>
+    <div id="chat-input-container">
+      <input type="text" id="chat-input" placeholder="Type your question">
+      <button id="chat-send" onclick="sendMessage()">Send</button>
+    </div>
+  </div>
+</body>
+</html>
